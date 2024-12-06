@@ -1,0 +1,44 @@
+name: Deploy Azure Landing Zone
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Azure CLI
+      uses: azure/cli-action@v1
+      with:
+        azure_credentials: ${{ secrets.AZURE_CREDENTIALS }}
+      
+    - name: Azure login using Service Principal
+      uses: azure/login@v1
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+    - name: Install jq (for parsing JSON)
+      run: sudo apt-get install jq
+
+    - name: Set Subscription
+      run: |
+        az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    - name: Deploy Landing Zone with ARM Template
+      run: |
+        az deployment sub create \
+          --location eastus \
+          --template-file ./infrastructure/landing-zone-template.json \
+          --parameters location=eastus
+
+    - name: Verify deployment
+      run: |
+        az resource list --output table
